@@ -1,0 +1,32 @@
+app:
+  name: "AgentGaia"
+  version: "0.1.0"
+  debug: true
+  env: "local"
+
+server:
+  host: "0.0.0.0"
+  port: 9033
+  workers: 1
+  reload: true
+
+vault:
+  enabled: true
+  url: "http://localhost:8201"
+  token: "myroot"
+  secret_path: "secret/data/ai-chat/llm-keys"
+
+llm:
+  primary_provider: "claude"
+  backup_chain: ["claude", "openai", "gemini"]
+  models:
+    claude: "claude-opus-4-5-20251101"
+    openai: "gpt-5.1"
+    gemini: "gemini-3-pro-preview"
+  default_temperature: 0.2
+  default_max_tokens: 8192
+
+logging:
+  level: "DEBUG"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/agent-gaia.log"

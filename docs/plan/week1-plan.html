@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <title>AgentGaia Week 1 Plan</title>
+    <style>
+        :root {
+            --frontend-color: #F472B6;
+            --backend-color: #60A5FA;
+            --done-color: #10B981;
+        }
+        
+        body { padding: 2rem; }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: var(--pico-muted-color);
+            margin-bottom: 2rem;
+        }
+        
+        .goal-box {
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.1), rgba(96, 165, 250, 0.1));
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .goal-box h3 { margin-bottom: 0.5rem; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            vertical-align: top;
+            border: 1px solid var(--pico-muted-border-color);
+        }
+        
+        th {
+            background: var(--pico-card-background-color);
+            font-weight: bold;
+        }
+        
+        th.day { width: 80px; text-align: center; }
+        th.frontend { 
+            background: rgba(244, 114, 182, 0.2); 
+            color: var(--frontend-color);
+        }
+        th.backend { 
+            background: rgba(96, 165, 250, 0.2); 
+            color: var(--backend-color);
+        }
+        
+        .task {
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            background: var(--pico-card-background-color);
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        .task:last-child { margin-bottom: 0; }
+        
+        .task-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        
+        .task-detail {
+            color: var(--pico-muted-color);
+            font-size: 0.8rem;
+        }
+        
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            margin-left: 0.5rem;
+        }
+        
+        .tag-html { background: #E34F26; color: white; }
+        .tag-js { background: #F7DF1E; color: black; }
+        .tag-python { background: #3776AB; color: white; }
+        .tag-api { background: #10B981; color: white; }
+        
+        .deliverable {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--done-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .deliverable h3 {
+            color: var(--done-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .tech-stack {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+            padding: 1rem;
+            background: var(--pico-card-background-color);
+            border-radius: 8px;
+        }
+        
+        .tech-item {
+            padding: 0.5rem 1rem;
+            background: var(--pico-background-color);
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <h1>🚀 AgentGaia Week 1 Plan</h1>
+        <p class="subtitle">채팅 UI + LLM 연동 MVP</p>
+        
+        <!-- 주간 목표 -->
+        <div class="goal-box">
+            <h3>🎯 Week 1 Goal</h3>
+            <p><strong>화요일 시연:</strong> Pico CSS로 빠르게 구현, LLM 핵심 기능 완성</p>
+            <p style="color: var(--pico-muted-color); font-size: 0.9rem;">
+                "사내 전용 ChatGPT입니다. 외부로 데이터 안 나갑니다."<br>
+                <strong style="color: var(--done-color);">📌 CSS: Pico CSS 선택 (확장성보다 개발 속도 우선)</strong>
+            </p>
+        </div>
+        
+        <!-- 일별 계획 테이블 -->
+        <table>
+            <thead>
+                <tr>
+                    <th class="day">Step</th>
+                    <th class="frontend">🎨 Frontend</th>
+                    <th class="backend">⚙️ Backend</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Step 1 -->
+                <tr>
+                    <td style="text-align: center; font-weight: bold;">
+                        Step 1
+                    </td>
+                    <td>
+                        <div class="task">
+                            <div class="task-title">프로젝트 구조 생성 <span class="tag tag-html">HTML</span></div>
+                            <div class="task-detail">
+                                • index.html 기본 틀<br>
+                                • Pico.css CDN 연결<br>
+                                • 다크모드 기본 설정
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">채팅 레이아웃</div>
+                            <div class="task-detail">
+                                • 헤더 (브랜드명)<br>
+                                • 메시지 컨테이너<br>
+                                • 입력 폼
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">Provider 선택 UI <span class="tag tag-html">UI</span></div>
+                            <div class="task-detail">
+                                • 드롭다운: Claude / GPT / Gemini<br>
+                                • 선택값 WebSocket으로 전달<br>
+                                • 현재 Provider 표시
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="task">
+                            <div class="task-title">FastAPI 프로젝트 초기화 <span class="tag tag-python">Python</span></div>
+                            <div class="task-detail">
+                                • 가상환경 생성<br>
+                                • fastapi, uvicorn 설치<br>
+                                • main.py 기본 구조
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">정적 파일 서빙</div>
+                            <div class="task-detail">
+                                • /templates (Jinja2)<br>
+                                • /static (JS, CSS)
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">LLM Provider 설정 <span class="tag tag-python">Config</span></div>
+                            <div class="task-detail">
+                                • .env에 API 키 3개 저장<br>
+                                • OPENAI_API_KEY<br>
+                                • GOOGLE_API_KEY<br>
+                                • ANTHROPIC_API_KEY
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                
+                <!-- Step 2 -->
+                <tr>
+                    <td style="text-align: center; font-weight: bold;">
+                        Step 2
+                    </td>
+                    <td>
+                        <div class="task">
+                            <div class="task-title">메시지 스타일 <span class="tag tag-html">CSS</span></div>
+                            <div class="task-detail">
+                                • 단순 블록 형태 (말풍선 X)<br>
+                                • User/AI 라벨로 구분<br>
+                                • 스크롤 자동 이동
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">기본 JS 로직 <span class="tag tag-js">JS</span></div>
+                            <div class="task-detail">
+                                • 메시지 추가 함수<br>
+                                • 폼 submit 핸들러<br>
+                                • Enter 키 전송
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">파일 업로드 UI <span class="tag tag-js">JS</span></div>
+                            <div class="task-detail">
+                                • 📎 버튼 + input[type=file]<br>
+                                • 파일명 표시<br>
+                                • .txt, .md 필터링
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="task">
+                            <div class="task-title">WebSocket 엔드포인트 <span class="tag tag-api">WS</span></div>
+                            <div class="task-detail">
+                                • /ws/chat 라우트 생성<br>
+                                • 연결/해제 핸들링<br>
+                                • Echo 테스트
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">파일 업로드 API <span class="tag tag-api">REST</span></div>
+                            <div class="task-detail">
+                                • POST /api/upload<br>
+                                • 텍스트 파일 읽기<br>
+                                • 세션에 파일 내용 저장
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                
+                <!-- Step 3 -->
+                <tr>
+                    <td style="text-align: center; font-weight: bold;">
+                        Step 3
+                    </td>
+                    <td>
+                        <div class="task">
+                            <div class="task-title">WebSocket 클라이언트 <span class="tag tag-js">JS</span></div>
+                            <div class="task-detail">
+                                • new WebSocket() 연결<br>
+                                • onmessage 핸들러<br>
+                                • 연결 상태 표시<br>
+                                • 재연결 로직
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">타이핑 인디케이터</div>
+                            <div class="task-detail">
+                                • "AI가 입력 중..." 표시<br>
+                                • 응답 완료 시 숨김
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="task">
+                            <div class="task-title">LangGraph 코어 설계 <span class="tag tag-python">LangGraph</span></div>
+                            <div class="task-detail">
+                                • ChatState 정의<br>
+                                  - messages: Annotated[list, operator.add]<br>
+                                  - summary: str (압축된 과거)<br>
+                                  - file_context: str (첨부 파일)<br>
+                                • chat_node 함수 작성<br>
+                                • START → chat → END 구조
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">Summary Memory 구현 <span class="tag tag-api">Memory</span></div>
+                            <div class="task-detail">
+                                • 메시지 20개 초과 시 요약 트리거<br>
+                                • 오래된 대화 → LLM 요약<br>
+                                • [요약] + [최근 10개] 구조 유지
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">파일 컨텍스트 처리 <span class="tag tag-python">File</span></div>
+                            <div class="task-detail">
+                                • 업로드된 파일 내용 State에 저장<br>
+                                • SystemMessage로 LLM에 전달<br>
+                                • 토큰 제한 체크 (너무 크면 잘라내기)
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">Checkpointer 연동 <span class="tag tag-api">DB</span></div>
+                            <div class="task-detail">
+                                • MemorySaver (Week 1)<br>
+                                • summary + 최근 메시지만 저장<br>
+                                • DB 부하 최소화
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                
+                <!-- Step 4 -->
+                <tr>
+                    <td style="text-align: center; font-weight: bold;">
+                        Step 4
+                    </td>
+                    <td>
+                        <div class="task">
+                            <div class="task-title">스트리밍 표시 <span class="tag tag-js">JS</span></div>
+                            <div class="task-detail">
+                                • 토큰 단위 실시간 렌더링<br>
+                                • [DONE] 신호 처리<br>
+                                • 깜빡이는 커서 효과
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">UX 개선</div>
+                            <div class="task-detail">
+                                • 빈 메시지 방지<br>
+                                • 전송 중 버튼 비활성화<br>
+                                • 에러 메시지 표시
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="task">
+                            <div class="task-title">LLM Router 구현 <span class="tag tag-python">Router</span></div>
+                            <div class="task-detail">
+                                • Provider별 클라이언트 생성<br>
+                                  - ChatAnthropic (Claude)<br>
+                                  - ChatOpenAI (GPT-4)<br>
+                                  - ChatGoogleGenerativeAI (Gemini)<br>
+                                • 동적 Provider 선택
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">Graph + WebSocket 통합 <span class="tag tag-api">Stream</span></div>
+                            <div class="task-detail">
+                                • graph.astream() 사용<br>
+                                • 토큰 단위 WS 전송<br>
+                                • 완료 신호 ([DONE])
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">에러 핸들링</div>
+                            <div class="task-detail">
+                                • Provider별 에러 처리<br>
+                                • Rate Limit 대응<br>
+                                • Fallback Provider (선택)
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                
+                <!-- Step 5 -->
+                <tr>
+                    <td style="text-align: center; font-weight: bold;">
+                        Step 5
+                    </td>
+                    <td>
+                        <div class="task">
+                            <div class="task-title">마무리 & 폴리싱</div>
+                            <div class="task-detail">
+                                • 반응형 확인 (모바일)<br>
+                                • 브라우저 호환성 테스트<br>
+                                • 로고/파비콘 추가
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="task">
+                            <div class="task-title">사내 서버 배포 <span class="tag tag-python">Deploy</span></div>
+                            <div class="task-detail">
+                                • FastAPI 직접 실행<br>
+                                • systemd 서비스 등록 (선택)<br>
+                                • 방화벽/포트 설정
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">통합 테스트</div>
+                            <div class="task-detail">
+                                • Summary Memory 동작 확인<br>
+                                • 긴 대화 후 요약 트리거 테스트<br>
+                                • 동시 사용자 테스트
+                            </div>
+                        </div>
+                        <div class="task">
+                            <div class="task-title">🎉 데모 준비</div>
+                            <div class="task-detail">
+                                • 시연 시나리오 작성<br>
+                                • 백업 플랜 (API 장애 시)
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <!-- 사내 인프라 현황 -->
+        <article style="margin-top: 2rem; background: rgba(51, 103, 145, 0.1); border: 1px solid #336791; border-radius: 8px; padding: 1.5rem;">
+            <h3 style="color: #336791; margin-bottom: 1rem;">🏢 사내 인프라 현황</h3>
+            <table>
+                <tr>
+                    <th style="width: 30%;">컴포넌트</th>
+                    <th>상태</th>
+                    <th>사용 시점</th>
+                </tr>
+                <tr>
+                    <td>PostgreSQL 18</td>
+                    <td><span style="color: #10B981;">✅ 구축됨</span></td>
+                    <td><span style="color: var(--pico-muted-color);">Week 2+ Checkpointer 영속화</span></td>
+                </tr>
+                <tr>
+                    <td>Qdrant (Vector DB)</td>
+                    <td><span style="color: #10B981;">✅ 구축됨</span></td>
+                    <td><span style="color: var(--pico-muted-color);">Week 3+ RAG용</span></td>
+                </tr>
+                <tr>
+                    <td>Embedding Server</td>
+                    <td><span style="color: #10B981;">✅ 구축됨</span></td>
+                    <td><span style="color: var(--pico-muted-color);">Week 3+ RAG용</span></td>
+                </tr>
+                <tr>
+                    <td>FastAPI (AgentGaia)</td>
+                    <td><span style="color: #F59E0B;">🆕 Week 1 배포</span></td>
+                    <td>채팅 백엔드 + MemorySaver</td>
+                </tr>
+            </table>
+        </article>
+
+        <!-- 기술 스택 -->
+        <div class="tech-stack">
+            <strong>Tech Stack:</strong>
+            <span class="tech-item">Python 3.11+</span>
+            <span class="tech-item">FastAPI</span>
+            <span class="tech-item">WebSocket</span>
+            <span class="tech-item" style="border: 1px solid #F37F13; color: #F37F13;">LangGraph</span>
+            <span class="tech-item" style="border: 1px solid #10B981; color: #10B981;">Summary Memory</span>
+            <span class="tech-item">Pico.css</span>
+            <span class="tech-item">Vanilla JS</span>
+        </div>
+        
+        <!-- LLM Providers -->
+        <div class="tech-stack" style="margin-top: 0.5rem;">
+            <strong>LLM Providers:</strong>
+            <span class="tech-item" style="border: 1px solid #D97706; color: #D97706;">Claude (Anthropic)</span>
+            <span class="tech-item" style="border: 1px solid #10A37F; color: #10A37F;">GPT-4 (OpenAI)</span>
+            <span class="tech-item" style="border: 1px solid #4285F4; color: #4285F4;">Gemini (Google)</span>
+        </div>
+        
+        <!-- LangGraph 아키텍처 -->
+        <article style="margin-top: 2rem;">
+            <h3>🧠 LangGraph 컨텍스트 관리 (Summary Memory + File + Multi Provider)</h3>
+            <pre style="background: var(--pico-code-background-color); padding: 1rem; border-radius: 8px; overflow-x: auto;">
+[State 구조]
+
+┌─────────────────────────────────────────────────────────────────┐
+│  ChatState                                                      │
+│  ├── provider: "claude" | "openai" | "gemini"                   │
+│  ├── file_context: "회의록 내용..."                             │
+│  ├── summary: "홍길동, 제주도 여행 계획 중..."                  │
+│  └── messages: [최근 msg1, msg2, ... msg10]                     │
+└─────────────────────────────────────────────────────────────────┘
+
+[LLM Router]
+
+  Provider 선택 (UI 드롭다운)
+          │
+          ▼
+  ┌───────────────────────────────────────┐
+  │           get_llm(provider)           │
+  ├───────────┬───────────┬───────────────┤
+  │  claude   │  openai   │    gemini     │
+  │     ↓     │     ↓     │       ↓       │
+  │ Claude 4  │  GPT-4o   │ Gemini 2.0    │
+  └───────────┴───────────┴───────────────┘
+          │
+          ▼
+     chat_node에서 동적 LLM 사용
+
+[LLM에 전달되는 순서]
+
+┌─────────────────────────────────────────┐
+│ 1. [첨부 파일] file_context              │
+├─────────────────────────────────────────┤
+│ 2. [이전 대화 요약] summary               │
+├─────────────────────────────────────────┤
+│ 3. [최근 메시지들] messages[-10:]         │
+└─────────────────────────────────────────┘
+            </pre>
+        </article>
+        
+        <!-- 핵심 코드 스니펫 -->
+        <article style="margin-top: 1rem;">
+            <h3>📝 Step 3 핵심 코드 (Summary Memory + File)</h3>
+            <pre style="background: #0d1117; color: #e6edf3; padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.85rem;">
+<span style="color: #ff7b72;">from</span> langgraph.graph <span style="color: #ff7b72;">import</span> StateGraph, END
+<span style="color: #ff7b72;">from</span> langgraph.checkpoint.memory <span style="color: #ff7b72;">import</span> MemorySaver
+<span style="color: #ff7b72;">from</span> langchain_core.messages <span style="color: #ff7b72;">import</span> HumanMessage, SystemMessage
+<span style="color: #ff7b72;">from</span> typing <span style="color: #ff7b72;">import</span> TypedDict, Annotated, Literal
+<span style="color: #ff7b72;">import</span> operator
+
+<span style="color: #8b949e;"># 1. State 정의</span>
+<span style="color: #ff7b72;">class</span> <span style="color: #d2a8ff;">ChatState</span>(TypedDict):
+    messages: Annotated[list, operator.add]
+    summary: <span style="color: #ff7b72;">str</span>
+    file_context: <span style="color: #ff7b72;">str</span>
+    provider: <span style="color: #ff7b72;">str</span>  <span style="color: #8b949e;"># "claude" | "openai" | "gemini"</span>
+            </pre>
+        </article>
+        
+        <!-- LLM Router 코드 -->
+        <article style="margin-top: 1rem;">
+            <h3>📝 Step 4 핵심 코드 (LLM Router)</h3>
+            <pre style="background: #0d1117; color: #e6edf3; padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.85rem;">
+<span style="color: #ff7b72;">from</span> langchain_anthropic <span style="color: #ff7b72;">import</span> ChatAnthropic
+<span style="color: #ff7b72;">from</span> langchain_openai <span style="color: #ff7b72;">import</span> ChatOpenAI
+<span style="color: #ff7b72;">from</span> langchain_google_genai <span style="color: #ff7b72;">import</span> ChatGoogleGenerativeAI
+
+<span style="color: #8b949e;"># LLM Router - Provider별 클라이언트 생성</span>
+<span style="color: #ff7b72;">def</span> <span style="color: #d2a8ff;">get_llm</span>(provider: <span style="color: #ff7b72;">str</span>):
+    <span style="color: #ff7b72;">match</span> provider:
+        <span style="color: #ff7b72;">case</span> <span style="color: #a5d6ff;">"claude"</span>:
+            <span style="color: #ff7b72;">return</span> ChatAnthropic(
+                model=<span style="color: #a5d6ff;">"claude-sonnet-4-20250514"</span>,
+                api_key=os.getenv(<span style="color: #a5d6ff;">"ANTHROPIC_API_KEY"</span>)
+            )
+        <span style="color: #ff7b72;">case</span> <span style="color: #a5d6ff;">"openai"</span>:
+            <span style="color: #ff7b72;">return</span> ChatOpenAI(
+                model=<span style="color: #a5d6ff;">"gpt-4o"</span>,
+                api_key=os.getenv(<span style="color: #a5d6ff;">"OPENAI_API_KEY"</span>)
+            )
+        <span style="color: #ff7b72;">case</span> <span style="color: #a5d6ff;">"gemini"</span>:
+            <span style="color: #ff7b72;">return</span> ChatGoogleGenerativeAI(
+                model=<span style="color: #a5d6ff;">"gemini-2.0-flash"</span>,
+                google_api_key=os.getenv(<span style="color: #a5d6ff;">"GOOGLE_API_KEY"</span>)
+            )
+        <span style="color: #ff7b72;">case</span> _:
+            <span style="color: #ff7b72;">raise</span> ValueError(<span style="color: #a5d6ff;">f"Unknown provider: {provider}"</span>)
+
+<span style="color: #8b949e;"># chat_node에서 동적 LLM 선택</span>
+<span style="color: #ff7b72;">async def</span> <span style="color: #d2a8ff;">chat_node</span>(state: ChatState):
+    llm = get_llm(state.get(<span style="color: #a5d6ff;">"provider"</span>, <span style="color: #a5d6ff;">"claude"</span>))  <span style="color: #8b949e;"># 기본값: claude</span>
+    
+    <span style="color: #8b949e;"># ... (file_context, summary 처리)</span>
+    
+    response = <span style="color: #ff7b72;">await</span> llm.ainvoke(llm_messages)
+    <span style="color: #ff7b72;">return</span> {<span style="color: #a5d6ff;">"messages"</span>: [response]}
+            </pre>
+        </article>
+        
+        <!-- 화요일 시연 산출물 -->
+        <div class="deliverable">
+            <h3>📦 Deliverables (화요일 시연)</h3>
+            <ul>
+                <li><strong>동작하는 채팅 웹앱</strong> - Pico CSS, 브라우저에서 접속 가능</li>
+                <li><strong>멀티 Provider 지원</strong> - Claude / GPT / Gemini 선택 가능</li>
+                <li><strong>실시간 스트리밍</strong> - 토큰 단위 실시간 응답</li>
+                <li><strong>Summary Memory</strong> - 긴 대화도 맥락 유지 (20턴 → 요약)</li>
+                <li><strong>파일 업로드</strong> - .txt, .md 파일 분석 가능</li>
+                <li><strong>사내 서버 배포</strong> - 팀원들 접속 가능</li>
+                <li><strong>에러 핸들링 & 재연결</strong> - 안정적인 시연 환경</li>
+            </ul>
+        </div>
+        
+        <!-- 리스크 -->
+        <article style="margin-top: 2rem;">
+            <h3>⚠️ 리스크 & 대응</h3>
+            <table>
+                <tr>
+                    <th style="width: 30%;">리스크</th>
+                    <th>대응 방안</th>
+                </tr>
+                <tr>
+                    <td>API 비용 (3개 Provider)</td>
+                    <td>기본값 Claude로, 비교 시에만 다른 Provider 사용</td>
+                </tr>
+                <tr>
+                    <td>Provider별 응답 형식 차이</td>
+                    <td>LangChain이 추상화해줌, 동일 인터페이스</td>
+                </tr>
+                <tr>
+                    <td>Summary 추가 LLM 비용</td>
+                    <td>20턴마다 1회만 호출, 저렴한 모델 사용 가능</td>
+                </tr>
+                <tr>
+                    <td>서버 재시작 시 대화 손실</td>
+                    <td>Week 1 MVP 범위, Week 2에서 PostgresSaver 연동</td>
+                </tr>
+                <tr>
+                    <td>시간 부족</td>
+                    <td>Step 4 스트리밍은 Phase 2로 이동 가능</td>
+                </tr>
+            </table>
+        </article>
+        
+    </main>
+</body>
+</html>
