@@ -1,6 +1,5 @@
 /**
- * AgentGaia - Multi-LLM Chat Platform
- * Clean design with dynamic model selection and file upload
+ * AgentGaia - Claude-style Multi-LLM Chat Platform
  */
 
 const connections = {};
@@ -9,17 +8,20 @@ let currentProvider = 'claude';
 let messageId = 0;
 
 // File attachments state
-const attachments = new Map(); // filename -> { status, category, error }
+const attachments = new Map();
 
+// DOM Elements
 const modelSelect = document.getElementById('model-select');
 const chatInput = document.getElementById('chat-input');
 const sendBtn = document.getElementById('send-btn');
 const chatOutput = document.getElementById('chat-output');
 const chatStatus = document.getElementById('chat-status');
-const chatCard = document.querySelector('.chat-card');
 const attachBtn = document.getElementById('attach-btn');
 const fileInput = document.getElementById('file-input');
 const attachmentsPreview = document.getElementById('attachments-preview');
+const welcomeScreen = document.getElementById('welcome-screen');
+const newChatBtn = document.getElementById('new-chat-btn');
+const chatMain = document.querySelector('.chat-main');
 
 document.addEventListener('DOMContentLoaded', () => {
     initEventListeners();
@@ -29,7 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
 function initEventListeners() {
     modelSelect.addEventListener('change', (e) => {
         currentProvider = e.target.value;
-        updateCardStyle();
         updateStatus();
         updateSendButton();
     });
@@ -45,33 +46,54 @@ function initEventListeners() {
 
     chatInput.addEventListener('input', () => {
         chatInput.style.height = 'auto';
-        chatInput.style.height = Math.min(chatInput.scrollHeight, 128) + 'px';
+        chatInput.style.height = Math.min(chatInput.scrollHeight, 200) + 'px';
         updateSendButton();
+    });
+
+    // Paste image from clipboard
+    chatInput.addEventListener('paste', async (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        for (const item of items) {
+            if (item.type.startsWith('image/')) {
+                e.preventDefault();
+                const file = item.getAsFile();
+                if (file) {
+                    // Generate filename with timestamp
+                    const ext = item.type.split('/')[1] || 'png';
+                    const filename = `pasted-image-${Date.now()}.${ext}`;
+                    const renamedFile = new File([file], filename, { type: file.type });
+                    await handleFiles([renamedFile]);
+                }
+                break;
+            }
+        }
     });
 
     // File upload handlers
     attachBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', handleFileSelect);
 
-    // Drag and drop
-    chatCard.addEventListener('dragover', (e) => {
+    // New chat button
+    newChatBtn.addEventListener('click', clearChat);
+
+    // Drag and drop on main area
+    const chatMain = document.querySelector('.chat-main');
+    chatMain.addEventListener('dragover', (e) => {
         e.preventDefault();
-        chatCard.classList.add('drag-over');
+        chatMain.classList.add('drag-over');
     });
-    chatCard.addEventListener('dragleave', () => {
-        chatCard.classList.remove('drag-over');
+    chatMain.addEventListener('dragleave', () => {
+        chatMain.classList.remove('drag-over');
     });
-    chatCard.addEventListener('drop', (e) => {
+    chatMain.addEventListener('drop', (e) => {
         e.preventDefault();
-        chatCard.classList.remove('drag-over');
+        chatMain.classList.remove('drag-over');
         if (e.dataTransfer.files.length > 0) {
             handleFiles(e.dataTransfer.files);
         }
     });
-}
-
-function updateCardStyle() {
-    chatCard.setAttribute('data-provider', currentProvider);
 }
 
 function updateSendButton() {
@@ -85,15 +107,15 @@ function updateSendButton() {
 function updateStatus(text, className) {
     if (text) {
         chatStatus.textContent = text;
-        chatStatus.className = `status ${className || ''}`;
+        chatStatus.className = `status-indicator ${className || ''}`;
     } else {
         const ws = connections[currentProvider];
         if (ws && ws.readyState === WebSocket.OPEN) {
-            chatStatus.textContent = '연결됨';
-            chatStatus.className = 'status connected';
+            chatStatus.textContent = '';
+            chatStatus.className = 'status-indicator connected';
         } else {
-            chatStatus.textContent = '연결 중...';
-            chatStatus.className = 'status';
+            chatStatus.textContent = 'Connecting...';
+            chatStatus.className = 'status-indicator';
         }
     }
 }
@@ -110,7 +132,7 @@ function connectWebSocket(provider) {
     ws.onopen = () => {
         console.log(`Connected: ${provider}`);
         if (provider === currentProvider) {
-            updateStatus('연결됨', 'connected');
+            updateStatus();
             updateSendButton();
         }
     };
@@ -125,7 +147,7 @@ function connectWebSocket(provider) {
     ws.onclose = () => {
         console.log(`Disconnected: ${provider}`);
         if (provider === currentProvider) {
-            updateStatus('연결 끊김', '');
+            updateStatus('Disconnected', '');
             updateSendButton();
         }
         setTimeout(() => {
@@ -137,7 +159,7 @@ function connectWebSocket(provider) {
 
     ws.onerror = () => {
         if (provider === currentProvider) {
-            updateStatus('오류', 'error');
+            updateStatus('Error', 'error');
         }
     };
 
@@ -147,48 +169,103 @@ function connectWebSocket(provider) {
 function handleMessage(data) {
     switch (data.status || data.type) {
         case 'connected':
-            updateStatus('준비됨', 'connected');
+            updateStatus();
             break;
 
         case 'streaming':
-            updateStatus('응답 중...', 'streaming');
-            hideEmptyState();
+            updateStatus('Thinking...', 'streaming');
+            hideWelcomeScreen();
             let bubble = chatOutput.querySelector('.message.assistant.streaming');
             if (!bubble) {
-                bubble = document.createElement('div');
-                bubble.className = 'message assistant streaming';
+                bubble = createMessageElement('', 'assistant', true);
                 chatOutput.appendChild(bubble);
             }
-            bubble.textContent += data.chunk;
+            const content = bubble.querySelector('.message-content');
+            content.textContent += data.chunk;
             chatOutput.scrollTop = chatOutput.scrollHeight;
             break;
 
         case 'complete':
-            updateStatus('완료', 'connected');
+            updateStatus();
             const streamingBubble = chatOutput.querySelector('.message.assistant.streaming');
             if (streamingBubble) streamingBubble.classList.remove('streaming');
             break;
 
         case 'error':
-            updateStatus('오류', 'error');
+            updateStatus('Error', 'error');
             break;
 
         case 'backup_switch':
-            updateStatus(`${data.backup_provider} 전환`, 'connected');
+            updateStatus(`Switched to ${data.backup_provider}`, 'connected');
             break;
     }
 }
 
-function hideEmptyState() {
-    const emptyState = chatOutput.querySelector('.empty-state');
-    if (emptyState) emptyState.remove();
+function hideWelcomeScreen() {
+    if (welcomeScreen) {
+        welcomeScreen.style.display = 'none';
+    }
+    if (chatMain) {
+        chatMain.classList.remove('centered');
+    }
+}
+
+function clearChat() {
+    // Clear messages except welcome screen
+    const messages = chatOutput.querySelectorAll('.message');
+    messages.forEach(msg => msg.remove());
+
+    // Show welcome screen and restore centered layout
+    if (welcomeScreen) {
+        welcomeScreen.style.display = 'flex';
+    }
+    if (chatMain) {
+        chatMain.classList.add('centered');
+    }
+
+    // Clear attachments
+    attachments.clear();
+    renderAttachments();
+
+    // Clear input
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    updateSendButton();
+
+    // Send clear history to server
+    const ws = connections[currentProvider];
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'clear_history' }));
+    }
+}
+
+function createMessageElement(text, type, isStreaming = false) {
+    const div = document.createElement('div');
+    div.className = `message ${type}${isStreaming ? ' streaming' : ''}`;
+
+    const avatar = type === 'user' ? 'U' : 'A';
+
+    div.innerHTML = `
+        <div class="message-inner">
+            <div class="message-avatar">${avatar}</div>
+            <div class="message-content">${escapeHtml(text)}</div>
+        </div>
+    `;
+
+    return div;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // File upload functions
 async function handleFileSelect(e) {
     if (e.target.files.length > 0) {
         await handleFiles(e.target.files);
-        fileInput.value = ''; // Reset for same file selection
+        fileInput.value = '';
     }
 }
 
@@ -201,8 +278,13 @@ async function handleFiles(files) {
 async function uploadFile(file) {
     const filename = file.name;
 
-    // Add to attachments with uploading status
-    attachments.set(filename, { status: 'uploading', category: 'unknown' });
+    // Generate thumbnail for images before upload
+    let thumbnail = null;
+    if (file.type.startsWith('image/')) {
+        thumbnail = await generateThumbnail(file);
+    }
+
+    attachments.set(filename, { status: 'uploading', category: file.type.startsWith('image/') ? 'image' : 'unknown', thumbnail });
     renderAttachments();
 
     try {
@@ -217,10 +299,13 @@ async function uploadFile(file) {
         const result = await response.json();
 
         if (result.success) {
+            // Keep the thumbnail we generated earlier
+            const existingInfo = attachments.get(filename);
             attachments.set(filename, {
                 status: 'ready',
                 category: result.category,
                 hasImage: result.has_image,
+                thumbnail: existingInfo?.thumbnail || thumbnail,
             });
         } else {
             attachments.set(filename, {
@@ -241,42 +326,71 @@ async function uploadFile(file) {
     updateSendButton();
 }
 
+function generateThumbnail(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            resolve(e.target.result);
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+    });
+}
+
 function removeAttachment(filename) {
     attachments.delete(filename);
     renderAttachments();
     updateSendButton();
 
-    // Also delete from server
     fetch(`/api/v1/upload/${encodeURIComponent(filename)}`, {
         method: 'DELETE',
     }).catch(console.error);
 }
 
 function renderAttachments() {
+    attachmentsPreview.innerHTML = '';
+
     if (attachments.size === 0) {
-        attachmentsPreview.style.display = 'none';
+        attachmentsPreview.classList.remove('has-files');
         return;
     }
 
-    attachmentsPreview.style.display = 'flex';
-    attachmentsPreview.innerHTML = '';
+    attachmentsPreview.classList.add('has-files');
 
     for (const [filename, info] of attachments) {
         const item = document.createElement('div');
-        item.className = `attachment-item ${info.category} ${info.status}`;
+        const isImage = info.category === 'image';
+        const hasThumbnail = info.thumbnail && info.thumbnail.length > 0;
+        item.className = `attachment-item ${info.category} ${info.status}${(isImage && hasThumbnail) ? ' image-preview' : ''}`;
 
-        const icon = getFileIcon(info.category);
-        const statusIcon = info.status === 'uploading' ? '⏳' : '';
+        const statusIcon = info.status === 'uploading' ? '⏳ ' : '';
 
-        item.innerHTML = `
-            <span class="icon">${icon}</span>
-            <span class="filename" title="${filename}">${statusIcon}${filename}</span>
-            <button class="remove-btn" title="제거">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-            </button>
-        `;
+        if (isImage && hasThumbnail) {
+            // Image with thumbnail preview
+            item.innerHTML = `
+                <div class="thumbnail-wrapper">
+                    <img src="${info.thumbnail}" alt="${filename}" class="thumbnail">
+                    <button class="remove-btn" title="Remove">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <span class="filename" title="${filename}">${statusIcon}${filename}</span>
+            `;
+        } else {
+            // Non-image file with icon
+            const icon = getFileIcon(info.category);
+            item.innerHTML = `
+                <span class="icon">${icon}</span>
+                <span class="filename" title="${filename}">${statusIcon}${filename}</span>
+                <button class="remove-btn" title="Remove">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            `;
+        }
 
         item.querySelector('.remove-btn').addEventListener('click', () => {
             removeAttachment(filename);
@@ -314,18 +428,19 @@ function sendMessage() {
     chatInput.value = '';
     chatInput.style.height = 'auto';
 
-    // Build display message with attachment info
+    // Build display message
     let displayMessage = message;
     if (readyAttachments.length > 0) {
         const fileList = readyAttachments.map(f => `📎 ${f}`).join('\n');
-        displayMessage = readyAttachments.length > 0
-            ? (message ? `${fileList}\n\n${message}` : fileList)
-            : message;
+        displayMessage = message ? `${fileList}\n\n${message}` : fileList;
     }
 
-    hideEmptyState();
-    appendMessage(displayMessage, 'user');
-    updateStatus('요청 중...', '');
+    hideWelcomeScreen();
+    const userMessage = createMessageElement(displayMessage, 'user');
+    chatOutput.appendChild(userMessage);
+    chatOutput.scrollTop = chatOutput.scrollHeight;
+
+    updateStatus('Sending...', '');
 
     // Clear attachments
     attachments.clear();
@@ -341,14 +456,6 @@ function sendMessage() {
             attachments: readyAttachments,
         }));
     } else {
-        updateStatus('연결 안됨', 'error');
+        updateStatus('Not connected', 'error');
     }
-}
-
-function appendMessage(text, type) {
-    const div = document.createElement('div');
-    div.className = `message ${type}`;
-    div.textContent = text;
-    chatOutput.appendChild(div);
-    chatOutput.scrollTop = chatOutput.scrollHeight;
 }
