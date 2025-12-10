@@ -11,7 +11,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.core.settings import get_settings, Settings
+from src.core.database import init_database, close_database
 from src.api.routes.chat import router as chat_router
+from src.api.routes.upload import router as upload_router
 from src.utils.logger import setup_logger, logger
 
 
@@ -29,9 +31,20 @@ async def lifespan(app: FastAPI):
     available = [k for k, v in keys.items() if v]
     logger.info(f"Available API keys: {available}")
 
+    # Initialize database connection pool
+    try:
+        await init_database()
+        logger.info("Database connection pool initialized")
+    except Exception as e:
+        logger.warning(f"Database initialization failed (will use config fallback): {e}")
+
     yield
 
     # Shutdown
+    try:
+        await close_database()
+    except Exception as e:
+        logger.warning(f"Database close error: {e}")
     logger.info("Shutting down AgentGaia")
 
 
@@ -73,6 +86,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # Routes
     app.include_router(chat_router)
+    app.include_router(upload_router)
 
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request):
@@ -114,7 +128,7 @@ if __name__ == "__main__":
         help="Environment (local, dev, prod)"
     )
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Host")
-    parser.add_argument("--port", type=int, default=8000, help="Port")
+    parser.add_argument("--port", type=int, default=9003, help="Port")
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
 
     args = parser.parse_args()

@@ -21,6 +21,28 @@ class VaultConfig(BaseModel):
     secret_path: str = "secret/data/agent-gaia/llm-keys"
 
 
+class DatabaseConfig(BaseModel):
+    """Database configuration."""
+    host: str = "localhost"
+    port: int = 5433
+    database: str = "funin-ai"
+    user: str = "postgres"
+    password: str = ""
+    min_pool_size: int = 1
+    max_pool_size: int = 5
+
+    @property
+    def dsn(self) -> str:
+        """Get PostgreSQL DSN string."""
+        return f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+
+
+class ModelCost(BaseModel):
+    """Cost per 1K tokens (USD)."""
+    input: float = 0.01
+    output: float = 0.03
+
+
 class LLMConfig(BaseModel):
     """LLM configuration."""
     primary_provider: str = "claude"
@@ -30,8 +52,23 @@ class LLMConfig(BaseModel):
         "openai": "gpt-5.1",
         "gemini": "gemini-3-pro-preview"
     }
+    # Costs keyed by model name (not provider)
+    costs: dict[str, ModelCost] = {
+        "claude-opus-4-5-20251101": ModelCost(input=0.015, output=0.075),
+        "claude-sonnet-4-20250514": ModelCost(input=0.003, output=0.015),
+        "gpt-5.1": ModelCost(input=0.01, output=0.03),
+        "gemini-3-pro-preview": ModelCost(input=0.00125, output=0.005),
+    }
     default_temperature: float = 0.2
     default_max_tokens: int = 8192
+
+    def get_model_cost(self, provider: str) -> ModelCost:
+        """Get cost for a provider's configured model."""
+        model_name = self.models.get(provider)
+        if model_name and model_name in self.costs:
+            return self.costs[model_name]
+        # Fallback default
+        return ModelCost(input=0.01, output=0.03)
 
 
 class ServerConfig(BaseModel):
@@ -61,6 +98,7 @@ class Settings(BaseSettings):
     # Sub-configurations
     server: ServerConfig = Field(default_factory=ServerConfig)
     vault: VaultConfig = Field(default_factory=VaultConfig)
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
@@ -100,6 +138,7 @@ class Settings(BaseSettings):
             "debug": app_config.get("debug", True),
             "server": config_data.get("server", {}),
             "vault": config_data.get("vault", {}),
+            "database": config_data.get("database", {}),
             "llm": config_data.get("llm", {}),
             "logging": config_data.get("logging", {}),
         }
@@ -110,6 +149,13 @@ class Settings(BaseSettings):
             if token.startswith("${") and token.endswith("}"):
                 env_var = token[2:-1]
                 settings_data["vault"]["token"] = os.getenv(env_var, "")
+
+        # Resolve environment variables in database password
+        if "database" in settings_data and "password" in settings_data["database"]:
+            password = settings_data["database"]["password"]
+            if password.startswith("${") and password.endswith("}"):
+                env_var = password[2:-1]
+                settings_data["database"]["password"] = os.getenv(env_var, "")
 
         return cls(**settings_data)
 

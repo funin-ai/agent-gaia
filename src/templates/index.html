@@ -1,38 +1,72 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="dark">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" href="/static/css/style.css">
-    <title>AgentGaia - Multi-LLM Chat</title>
+    <title>AgentGaia</title>
 </head>
 <body>
-    <div class="chat-container">
-        <!-- Chat Output -->
-        <section class="chat-outputs">
-            <!-- Claude -->
-            <article class="chat-panel" data-provider="claude">
-                <header>
-                    <div class="provider-info">
-                        <span class="provider-icon">C</span>
-                        <span class="provider-name">Claude Opus 4.5</span>
-                    </div>
-                    <span class="status" id="claude-status">대기중</span>
-                </header>
-                <div class="messages" id="claude-output"></div>
-                <div class="panel-input">
-                    <textarea data-provider="claude" placeholder="Claude에게 메시지..." rows="1"></textarea>
-                    <button class="panel-send-btn" data-provider="claude">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <main class="container">
+        <!-- Header -->
+        <header class="chat-header">
+            <hgroup>
+                <!-- <h1>AgentGaia</h1> -->
+                <p>Multi-LLM Chat Platform</p>
+            </hgroup>
+        </header>
+
+        <!-- Chat Area -->
+        <article class="chat-card" data-provider="claude">
+            <!-- Model Selector -->
+            <header>
+                <select id="model-select" aria-label="모델 선택">
+                    <optgroup label="Anthropic">
+                        <option value="claude">Claude Opus 4.5</option>
+                    </optgroup>
+                    <optgroup label="OpenAI">
+                        <option value="openai">GPT-5.1</option>
+                    </optgroup>
+                    <optgroup label="Google">
+                        <option value="gemini">Gemini 3 Pro</option>
+                    </optgroup>
+                </select>
+                <small id="chat-status" class="status">대기중</small>
+            </header>
+
+            <!-- Messages -->
+            <div class="messages" id="chat-output">
+                <div class="empty-state">
+                    <p>메시지를 입력하여 대화를 시작하세요</p>
+                </div>
+            </div>
+
+            <!-- Input -->
+            <footer>
+                <!-- File attachment preview -->
+                <div id="attachments-preview" class="attachments-preview" style="display: none;"></div>
+
+                <div class="input-group" role="group">
+                    <!-- File upload button -->
+                    <input type="file" id="file-input" multiple hidden
+                           accept=".txt,.md,.pdf,.docx,.csv,.xlsx,.py,.js,.ts,.jsx,.tsx,.json,.yaml,.yml,.html,.css,.png,.jpg,.jpeg,.gif,.webp">
+                    <button id="attach-btn" class="icon-btn" aria-label="파일 첨부" title="파일 첨부">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+                        </svg>
+                    </button>
+
+                    <textarea id="chat-input" placeholder="메시지를 입력하세요..." rows="1" aria-label="메시지 입력"></textarea>
+
+                    <button id="send-btn" aria-label="전송">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
                         </svg>
                     </button>
                 </div>
-            </article>
-        </section>
-
-    </div>
+            </footer>
+        </article>
+    </main>
 
     <script src="/static/js/app.js"></script>
 </body>

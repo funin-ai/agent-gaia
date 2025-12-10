@@ -16,6 +16,15 @@ vault:
   token: "myroot"
   secret_path: "secret/data/ai-chat/llm-keys"
 
+database:
+  host: "localhost"
+  port: 5433
+  database: "funin-ai"
+  user: "postgres"
+  password: "funin0905!"
+  min_pool_size: 1
+  max_pool_size: 5
+
 llm:
   primary_provider: "claude"
   backup_chain: ["claude", "openai", "gemini"]
@@ -23,6 +32,35 @@ llm:
     claude: "claude-opus-4-5-20251101"
     openai: "gpt-5.1"
     gemini: "gemini-3-pro-preview"
+  # Cost per 1K tokens (USD) - keyed by model name
+  costs:
+    # Claude models
+    "claude-opus-4-5-20251101":
+      input: 0.015
+      output: 0.075
+    "claude-sonnet-4-20250514":
+      input: 0.003
+      output: 0.015
+    "claude-haiku-3-5-20241022":
+      input: 0.0008
+      output: 0.004
+    # OpenAI models
+    "gpt-5.1":
+      input: 0.01
+      output: 0.03
+    "gpt-4o":
+      input: 0.0025
+      output: 0.01
+    "gpt-4o-mini":
+      input: 0.00015
+      output: 0.0006
+    # Google models
+    "gemini-3-pro-preview":
+      input: 0.00125
+      output: 0.005
+    "gemini-2.0-flash":
+      input: 0.0001
+      output: 0.0004
   default_temperature: 0.2
   default_max_tokens: 8192
 

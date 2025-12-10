@@ -2,7 +2,6 @@
 
 import asyncio
 from typing import Optional
-from collections import defaultdict
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
@@ -16,6 +15,8 @@ from src.models.schemas import (
     CompleteMessage,
     ErrorMessage,
 )
+from src.utils.token_counter import get_token_counter
+from src.api.routes.upload import uploaded_files
 
 
 def is_ws_connected(websocket: WebSocket) -> bool:
@@ -39,8 +40,8 @@ router = APIRouter(prefix="/api/v1", tags=["chat"])
 # User ratings store (message_id -> provider -> rating)
 user_ratings: dict[int, dict[str, int]] = {}
 
-# Conversation history store (provider -> list of messages)
-conversation_history: dict[str, list] = defaultdict(list)
+# Shared conversation history (all providers share the same context)
+conversation_history: list = []
 
 # System prompt for all providers
 SYSTEM_PROMPT = (
@@ -140,10 +141,12 @@ async def websocket_chat(websocket: WebSocket, provider: str):
             if data.get("type") == "chat":
                 message = data.get("message", "")
                 message_id = data.get("message_id", 0)
+                # File attachments: list of filenames
+                attachments = data.get("attachments", [])
 
                 # Start chat in background task
                 asyncio.create_task(
-                    process_chat(provider, message, message_id, websocket)
+                    process_chat(provider, message, message_id, websocket, attachments)
                 )
 
             elif data.get("type") == "rating":
@@ -157,8 +160,8 @@ async def websocket_chat(websocket: WebSocket, provider: str):
                 )
 
             elif data.get("type") == "clear_history":
-                conversation_history[provider].clear()
-                logger.info(f"Conversation history cleared for {provider}")
+                conversation_history.clear()
+                logger.info("Conversation history cleared")
                 await safe_send(
                     websocket, {"type": "history_cleared", "provider": provider}
                 )
@@ -170,8 +173,70 @@ async def websocket_chat(websocket: WebSocket, provider: str):
         manager.disconnect(provider)
 
 
+def _build_message_content(
+    message: str, attachments: list[str], provider: str
+) -> tuple[str, list | None]:
+    """Build message content with file attachments.
+
+    Args:
+        message: User text message
+        attachments: List of filenames to attach
+        provider: LLM provider name (for format compatibility)
+
+    Returns:
+        Tuple of (text_for_history, multimodal_content_or_none)
+        - text_for_history: Plain text version for conversation history
+        - multimodal_content: List content for current message if images present
+    """
+    if not attachments:
+        return message, None
+
+    text_context = []
+    image_parts = []
+
+    for filename in attachments:
+        if filename not in uploaded_files:
+            logger.warning(f"Attachment not found: {filename}")
+            continue
+
+        file_data = uploaded_files[filename]
+
+        if file_data.has_image:
+            # Add image for Vision API
+            image_parts.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:{file_data.mime_type};base64,{file_data.image_base64}"
+                }
+            })
+            # Add text description for history
+            text_context.append(f"[Image: {filename}]")
+            logger.info(f"Added image attachment: {filename}")
+        elif file_data.has_text:
+            # Add text content as context
+            text_context.append(f"[File: {filename}]\n{file_data.text_content}")
+            logger.info(f"Added text attachment: {filename} ({len(file_data.text_content)} chars)")
+
+    # Build plain text version for history
+    if text_context:
+        text_for_history = "\n\n".join(text_context) + f"\n\n---\n\n{message}"
+    else:
+        text_for_history = message
+
+    # If we have images, return multimodal content for current message
+    if image_parts:
+        multimodal_content = [{"type": "text", "text": text_for_history}] + image_parts
+        return text_for_history, multimodal_content
+
+    return text_for_history, None
+
+
 async def process_chat(
-    provider: str, message: str, message_id: int, websocket: WebSocket
+    provider: str,
+    message: str,
+    message_id: int,
+    websocket: WebSocket,
+    attachments: list[str] | None = None,
 ):
     """Process chat message using specified LLM provider.
 
@@ -180,9 +245,10 @@ async def process_chat(
         message: User message
         message_id: Message ID for tracking
         websocket: WebSocket for sending responses
+        attachments: List of filenames to include as context
     """
     try:
-        if not message.strip():
+        if not message.strip() and not attachments:
             await safe_send(
                 websocket,
                 ErrorMessage(provider=provider, error="Empty message").model_dump(),
@@ -192,19 +258,27 @@ async def process_chat(
         # Get LLM router
         llm_router = get_llm_router()
 
-        # Add user message to history
-        conversation_history[provider].append(HumanMessage(content=message))
+        # Build message content with file attachments
+        text_for_history, multimodal_content = _build_message_content(
+            message, attachments or [], provider
+        )
+
+        # Add plain text to shared history (compatible with all providers)
+        conversation_history.append(HumanMessage(content=text_for_history))
 
         # Trim history if too long
-        if len(conversation_history[provider]) > MAX_HISTORY_MESSAGES:
-            conversation_history[provider] = conversation_history[provider][
-                -MAX_HISTORY_MESSAGES:
-            ]
+        if len(conversation_history) > MAX_HISTORY_MESSAGES:
+            del conversation_history[:-MAX_HISTORY_MESSAGES]
 
-        # Build messages with history
-        messages = [SystemMessage(content=SYSTEM_PROMPT)] + conversation_history[
-            provider
-        ]
+        # Build messages for current request
+        # Use multimodal content for current message if available (images)
+        if multimodal_content:
+            # Replace last message with multimodal version for this request only
+            history_except_last = conversation_history[:-1]
+            current_message = HumanMessage(content=multimodal_content)
+            messages = [SystemMessage(content=SYSTEM_PROMPT)] + history_except_last + [current_message]
+        else:
+            messages = [SystemMessage(content=SYSTEM_PROMPT)] + conversation_history
 
         # Stream response and collect full response
         actual_provider = provider
@@ -259,9 +333,21 @@ async def process_chat(
                         ).model_dump(),
                     )
 
-        # Add assistant response to history
+        # Add assistant response to shared history
         if full_response:
-            conversation_history[provider].append(AIMessage(content=full_response))
+            conversation_history.append(AIMessage(content=full_response))
+
+            # Track token usage and cost
+            settings = get_settings()
+            model_name = settings.llm.models.get(actual_provider, "unknown")
+            token_counter = get_token_counter()
+            await token_counter.track_usage(
+                provider=actual_provider,
+                model=model_name,
+                input_text=message,
+                output_text=full_response,
+                messages=messages,
+            )
 
         # Send completion message
         await safe_send(
