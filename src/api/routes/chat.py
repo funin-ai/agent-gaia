@@ -129,6 +129,10 @@ async def websocket_chat(websocket: WebSocket, provider: str):
     """
     await manager.connect(provider, websocket)
 
+    # Generate unique session ID for this WebSocket connection
+    session_id = f"{provider}_{id(websocket)}"
+    token_counter = get_token_counter()
+
     # Send connection confirmation
     await websocket.send_json(
         {"type": "connected", "provider": provider, "status": "ready"}
@@ -146,7 +150,7 @@ async def websocket_chat(websocket: WebSocket, provider: str):
 
                 # Start chat in background task
                 asyncio.create_task(
-                    process_chat(provider, message, message_id, websocket, attachments)
+                    process_chat(provider, message, message_id, websocket, attachments, session_id)
                 )
 
             elif data.get("type") == "rating":
@@ -161,16 +165,25 @@ async def websocket_chat(websocket: WebSocket, provider: str):
 
             elif data.get("type") == "clear_history":
                 conversation_history.clear()
-                logger.info("Conversation history cleared")
+                # Reset session usage statistics
+                token_counter.reset_session(session_id)
+                logger.info(f"Conversation history and session usage cleared: {session_id}")
                 await safe_send(
-                    websocket, {"type": "history_cleared", "provider": provider}
+                    websocket, {
+                        "type": "history_cleared",
+                        "provider": provider,
+                        "session": token_counter.get_session(session_id).to_dict(),
+                    }
                 )
 
     except WebSocketDisconnect:
         manager.disconnect(provider)
+        # Clean up session on disconnect
+        token_counter.remove_session(session_id)
     except Exception as e:
         logger.error(f"WebSocket error for {provider}: {e}")
         manager.disconnect(provider)
+        token_counter.remove_session(session_id)
 
 
 def _build_message_content(
@@ -237,6 +250,7 @@ async def process_chat(
     message_id: int,
     websocket: WebSocket,
     attachments: list[str] | None = None,
+    session_id: str | None = None,
 ):
     """Process chat message using specified LLM provider.
 
@@ -246,6 +260,7 @@ async def process_chat(
         message_id: Message ID for tracking
         websocket: WebSocket for sending responses
         attachments: List of filenames to include as context
+        session_id: Unique session identifier for usage tracking
     """
     try:
         if not message.strip() and not attachments:
@@ -341,12 +356,33 @@ async def process_chat(
             settings = get_settings()
             model_name = settings.llm.models.get(actual_provider, "unknown")
             token_counter = get_token_counter()
-            await token_counter.track_usage(
+
+            # Use session_id for per-session tracking
+            effective_session_id = session_id or f"{provider}_unknown"
+            usage = await token_counter.track_usage(
+                session_id=effective_session_id,
                 provider=actual_provider,
                 model=model_name,
                 input_text=message,
                 output_text=full_response,
                 messages=messages,
+            )
+
+            # Send usage statistics to client
+            await safe_send(
+                websocket,
+                {
+                    "type": "usage",
+                    "provider": actual_provider,
+                    "model": model_name,
+                    "message": {
+                        "input_tokens": usage.input_tokens,
+                        "output_tokens": usage.output_tokens,
+                        "total_tokens": usage.total_tokens,
+                        "cost": round(usage.total_cost, 6),
+                    },
+                    "session": token_counter.get_session(effective_session_id).to_dict(),
+                },
             )
 
         # Send completion message

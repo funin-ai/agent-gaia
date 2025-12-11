@@ -22,6 +22,7 @@ const attachmentsPreview = document.getElementById('attachments-preview');
 const welcomeScreen = document.getElementById('welcome-screen');
 const newChatBtn = document.getElementById('new-chat-btn');
 const chatMain = document.querySelector('.chat-main');
+const usageInfo = document.getElementById('usage-info');
 
 document.addEventListener('DOMContentLoaded', () => {
     initEventListeners();
@@ -198,7 +199,23 @@ function handleMessage(data) {
         case 'backup_switch':
             updateStatus(`Switched to ${data.backup_provider}`, 'connected');
             break;
+
+        case 'usage':
+            updateUsageDisplay(data.session);
+            break;
+
+        case 'history_cleared':
+            updateUsageDisplay(data.session);
+            break;
     }
+}
+
+function updateUsageDisplay(session) {
+    if (!usageInfo || !session) return;
+    const cost = session.total_cost < 0.01
+        ? `${(session.total_cost * 100).toFixed(2)}¢`
+        : `$${session.total_cost.toFixed(4)}`;
+    usageInfo.textContent = `${session.total_tokens.toLocaleString()} tokens · ${cost}`;
 }
 
 function hideWelcomeScreen() {

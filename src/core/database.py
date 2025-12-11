@@ -86,8 +86,13 @@ def get_db_pool() -> DatabasePool:
 
 async def init_database():
     """Initialize database connection pool."""
-    pool = get_db_pool()
-    await pool.get_pool()
+    try:
+        pool = get_db_pool()
+        await asyncio.wait_for(pool.get_pool(), timeout=5.0)
+    except asyncio.TimeoutError:
+        logger.warning("Database connection timeout - continuing without DB")
+    except Exception as e:
+        logger.warning(f"Database connection failed: {e} - continuing without DB")
 
 
 async def close_database():

@@ -394,6 +394,13 @@ html, body {
     color: var(--text-muted);
 }
 
+.usage-info {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    opacity: 0.6;
+}
+
 .status-indicator.connected {
     color: #22c55e;
 }

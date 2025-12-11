@@ -25,6 +25,42 @@ class TokenUsage:
     total_cost: float
 
 
+@dataclass
+class SessionUsage:
+    """Session-level accumulated usage statistics."""
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    total_tokens: int = 0
+    total_cost: float = 0.0
+    message_count: int = 0
+
+    def add(self, usage: TokenUsage):
+        """Add a single message usage to session totals."""
+        self.total_input_tokens += usage.input_tokens
+        self.total_output_tokens += usage.output_tokens
+        self.total_tokens += usage.total_tokens
+        self.total_cost += usage.total_cost
+        self.message_count += 1
+
+    def reset(self):
+        """Reset session statistics."""
+        self.total_input_tokens = 0
+        self.total_output_tokens = 0
+        self.total_tokens = 0
+        self.total_cost = 0.0
+        self.message_count = 0
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "total_input_tokens": self.total_input_tokens,
+            "total_output_tokens": self.total_output_tokens,
+            "total_tokens": self.total_tokens,
+            "total_cost": round(self.total_cost, 6),
+            "message_count": self.message_count,
+        }
+
+
 class TokenCounter:
     """Count tokens and calculate costs."""
 
@@ -34,6 +70,34 @@ class TokenCounter:
         except Exception:
             self._encoding = None
             logger.warning("tiktoken not available, using approximate counting")
+
+        # Per-session usage tracking (keyed by session_id)
+        self._sessions: dict[str, SessionUsage] = {}
+        self._last_usage: dict[str, TokenUsage] = {}
+
+    def get_session(self, session_id: str) -> SessionUsage:
+        """Get or create session usage statistics."""
+        if session_id not in self._sessions:
+            self._sessions[session_id] = SessionUsage()
+        return self._sessions[session_id]
+
+    def get_last_usage(self, session_id: str) -> Optional[TokenUsage]:
+        """Get last message usage for a session."""
+        return self._last_usage.get(session_id)
+
+    def reset_session(self, session_id: str):
+        """Reset session usage statistics."""
+        if session_id in self._sessions:
+            self._sessions[session_id].reset()
+        if session_id in self._last_usage:
+            del self._last_usage[session_id]
+        logger.info(f"Session usage reset: {session_id}")
+
+    def remove_session(self, session_id: str):
+        """Remove session when disconnected."""
+        self._sessions.pop(session_id, None)
+        self._last_usage.pop(session_id, None)
+        logger.info(f"Session removed: {session_id}")
 
     def count_tokens(self, text: str) -> int:
         """Count tokens in text.
@@ -130,6 +194,7 @@ class TokenCounter:
 
     async def track_usage(
         self,
+        session_id: str,
         provider: str,
         model: str,
         input_text: str,
@@ -139,6 +204,7 @@ class TokenCounter:
         """Track token usage and calculate costs.
 
         Args:
+            session_id: Unique session identifier (e.g., websocket connection id)
             provider: Provider name (e.g., 'claude', 'openai', 'gemini')
             model: Model name (e.g., 'claude-opus-4-5-20251101')
             input_text: Input text (user message)
@@ -172,11 +238,16 @@ class TokenCounter:
             total_cost=total_cost,
         )
 
+        # Update session statistics
+        self._last_usage[session_id] = usage
+        session = self.get_session(session_id)
+        session.add(usage)
+
         # Log usage
         logger.info(
-            f"Token usage [{provider}/{model}]: "
+            f"Token usage [{session_id[:8]}][{provider}/{model}]: "
             f"in={input_tokens}, out={output_tokens}, total={total_tokens} | "
-            f"cost=${total_cost:.6f} (in=${input_cost:.6f}, out=${output_cost:.6f})"
+            f"cost=${total_cost:.6f} | session: {session.message_count} msgs, ${session.total_cost:.6f}"
         )
 
         return usage

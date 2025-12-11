@@ -127,8 +127,8 @@ if __name__ == "__main__":
         choices=["local", "dev", "prod"],
         help="Environment (local, dev, prod)"
     )
-    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host")
-    parser.add_argument("--port", type=int, default=9003, help="Port")
+    parser.add_argument("--host", type=str, default=None, help="Host")
+    parser.add_argument("--port", type=int, default=None, help="Port")
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
 
     args = parser.parse_args()
