@@ -17,6 +17,10 @@ from src.models.schemas import (
 )
 from src.utils.token_counter import get_token_counter
 from src.api.routes.upload import uploaded_files
+from src.services.web_search import (
+    get_web_search_service,
+    detect_search_intent,
+)
 
 
 def is_ws_connected(websocket: WebSocket) -> bool:
@@ -273,10 +277,60 @@ async def process_chat(
         # Get LLM router
         llm_router = get_llm_router()
 
+        # Check for web search intent
+        search_context = ""
+        has_search_intent, search_query = detect_search_intent(message)
+
+        if has_search_intent and search_query:
+            # Notify client that search is in progress
+            await safe_send(
+                websocket,
+                {
+                    "type": "searching",
+                    "provider": provider,
+                    "query": search_query,
+                }
+            )
+
+            # Perform web search
+            web_search = get_web_search_service()
+            search_response = await web_search.search(search_query)
+
+            # Send search results to client
+            await safe_send(
+                websocket,
+                {
+                    "type": "search_results",
+                    "provider": provider,
+                    "query": search_query,
+                    "results": [
+                        {
+                            "title": r.title,
+                            "url": r.url,
+                            "snippet": r.snippet,
+                        }
+                        for r in search_response.results
+                    ],
+                    "has_results": search_response.has_results,
+                }
+            )
+
+            # Build search context for RAG
+            if search_response.has_results:
+                search_context = search_response.to_context()
+                logger.info(f"Web search context added: {len(search_context)} chars")
+
         # Build message content with file attachments
         text_for_history, multimodal_content = _build_message_content(
             message, attachments or [], provider
         )
+
+        # Prepend search context if available
+        if search_context:
+            text_for_history = f"{search_context}\n\n---\n\n사용자 질문: {text_for_history}"
+            if multimodal_content:
+                # Update the text part of multimodal content
+                multimodal_content[0]["text"] = text_for_history
 
         # Add plain text to shared history (compatible with all providers)
         conversation_history.append(HumanMessage(content=text_for_history))

@@ -177,6 +177,20 @@ function handleMessage(data) {
             updateStatus();
             break;
 
+        case 'searching':
+            updateStatus(`Searching: "${data.query}"...`, 'searching');
+            hideWelcomeScreen();
+            showSearchIndicator(data.query);
+            break;
+
+        case 'search_results':
+            hideSearchIndicator();
+            if (data.has_results) {
+                showSearchResults(data.query, data.results);
+            }
+            updateStatus('Thinking...', 'streaming');
+            break;
+
         case 'streaming':
             updateStatus('Thinking...', 'streaming');
             hideWelcomeScreen();
@@ -212,6 +226,64 @@ function handleMessage(data) {
             updateUsageDisplay(data.session);
             break;
     }
+}
+
+function showSearchIndicator(query) {
+    // Remove existing indicator if any
+    hideSearchIndicator();
+
+    const indicator = document.createElement('div');
+    indicator.className = 'search-indicator';
+    indicator.innerHTML = `
+        <div class="search-indicator-content">
+            <svg class="search-spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <span>Searching for "<strong>${escapeHtml(query)}</strong>"...</span>
+        </div>
+    `;
+    chatOutput.appendChild(indicator);
+    chatOutput.scrollTop = chatOutput.scrollHeight;
+}
+
+function hideSearchIndicator() {
+    const indicator = chatOutput.querySelector('.search-indicator');
+    if (indicator) indicator.remove();
+}
+
+function showSearchResults(query, results) {
+    const resultsDiv = document.createElement('div');
+    resultsDiv.className = 'search-results';
+
+    let resultsHTML = `
+        <div class="search-results-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <span>Web search results for "${escapeHtml(query)}"</span>
+        </div>
+        <div class="search-results-list">
+    `;
+
+    for (const result of results.slice(0, 5)) {
+        resultsHTML += `
+            <div class="search-result-item">
+                <a href="${escapeHtml(result.url)}" target="_blank" rel="noopener noreferrer" class="search-result-title">
+                    ${escapeHtml(result.title)}
+                </a>
+                <div class="search-result-url">${escapeHtml(result.url)}</div>
+                <div class="search-result-snippet">${escapeHtml(result.snippet)}</div>
+            </div>
+        `;
+    }
+
+    resultsHTML += '</div>';
+    resultsDiv.innerHTML = resultsHTML;
+
+    chatOutput.appendChild(resultsDiv);
+    chatOutput.scrollTop = chatOutput.scrollHeight;
 }
 
 function updateUsageDisplay(session) {

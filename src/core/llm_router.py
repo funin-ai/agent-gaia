@@ -4,6 +4,8 @@ from typing import Optional, AsyncIterator
 from dataclasses import dataclass
 
 from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import BaseMessage
 
@@ -29,6 +31,20 @@ PROVIDER_CONFIGS: dict[str, ProviderConfig] = {
         api_key_name="anthropic",
         cost_per_1k_input=0.015,
         cost_per_1k_output=0.075
+    ),
+    "openai": ProviderConfig(
+        model="gpt-4o",
+        client_class=ChatOpenAI,
+        api_key_name="openai",
+        cost_per_1k_input=0.0025,
+        cost_per_1k_output=0.01
+    ),
+    "gemini": ProviderConfig(
+        model="gemini-2.0-flash",
+        client_class=ChatGoogleGenerativeAI,
+        api_key_name="google",
+        cost_per_1k_input=0.0001,
+        cost_per_1k_output=0.0004
     ),
 }
 
