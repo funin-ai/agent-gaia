@@ -10,6 +10,9 @@ let messageId = 0;
 // File attachments state
 const attachments = new Map();
 
+// Auth state
+let currentUser = null;
+
 // DOM Elements
 const modelSelect = document.getElementById('model-select');
 const chatInput = document.getElementById('chat-input');
@@ -26,6 +29,7 @@ const usageInfo = document.getElementById('usage-info');
 
 document.addEventListener('DOMContentLoaded', () => {
     initEventListeners();
+    initAuth();
     connectAllProviders();
 });
 
@@ -474,5 +478,161 @@ function sendMessage() {
         }));
     } else {
         updateStatus('Not connected', 'error');
+    }
+}
+
+// ==================== Authentication ====================
+
+/**
+ * Initialize authentication - check status and setup event listeners
+ */
+async function initAuth() {
+    // Check URL params for auth callback
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('auth_success')) {
+        // Clear URL params
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (urlParams.get('auth_error')) {
+        console.error('Auth error:', urlParams.get('auth_error'));
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // Check auth status
+    await checkAuthStatus();
+
+    // Setup login button handlers
+    const googleBtn = document.getElementById('google-login-btn');
+    const githubBtn = document.getElementById('github-login-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    if (googleBtn) {
+        googleBtn.addEventListener('click', () => {
+            window.location.href = '/api/v1/auth/google/login';
+        });
+    }
+
+    if (githubBtn) {
+        githubBtn.addEventListener('click', () => {
+            window.location.href = '/api/v1/auth/github/login';
+        });
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+    }
+
+    // Check which providers are available and hide unavailable ones
+    await checkAvailableProviders();
+}
+
+/**
+ * Check authentication status
+ */
+async function checkAuthStatus() {
+    try {
+        const response = await fetch('/api/v1/auth/status', {
+            credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (data.authenticated && data.user) {
+            currentUser = data.user;
+            showUserInfo(data.user);
+        } else {
+            currentUser = null;
+            showLoginButtons();
+        }
+    } catch (error) {
+        console.error('Failed to check auth status:', error);
+        showLoginButtons();
+    }
+}
+
+/**
+ * Check which OAuth providers are available
+ */
+async function checkAvailableProviders() {
+    try {
+        const response = await fetch('/api/v1/auth/providers');
+        const data = await response.json();
+
+        const googleBtn = document.getElementById('google-login-btn');
+        const githubBtn = document.getElementById('github-login-btn');
+
+        // Hide buttons for unconfigured providers
+        const availableProviders = data.providers.map(p => p.name);
+
+        if (googleBtn && !availableProviders.includes('google')) {
+            googleBtn.style.display = 'none';
+        }
+
+        if (githubBtn && !availableProviders.includes('github')) {
+            githubBtn.style.display = 'none';
+        }
+
+        // If auth is disabled, hide the entire section
+        if (!data.enabled) {
+            const userSection = document.getElementById('user-section');
+            if (userSection) {
+                userSection.style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Failed to check available providers:', error);
+    }
+}
+
+/**
+ * Show login buttons (not authenticated state)
+ */
+function showLoginButtons() {
+    const loginButtons = document.getElementById('login-buttons');
+    const userInfo = document.getElementById('user-info');
+
+    if (loginButtons) loginButtons.style.display = 'flex';
+    if (userInfo) userInfo.style.display = 'none';
+}
+
+/**
+ * Show user info (authenticated state)
+ */
+function showUserInfo(user) {
+    const loginButtons = document.getElementById('login-buttons');
+    const userInfo = document.getElementById('user-info');
+    const userAvatar = document.getElementById('user-avatar');
+    const userName = document.getElementById('user-name');
+
+    if (loginButtons) loginButtons.style.display = 'none';
+    if (userInfo) userInfo.style.display = 'flex';
+
+    if (userAvatar) {
+        userAvatar.src = user.picture || '/static/img/default-avatar.png';
+        userAvatar.onerror = () => {
+            userAvatar.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%236b6b6b"><circle cx="12" cy="8" r="4"/><path d="M12 14c-6 0-8 3-8 6v2h16v-2c0-3-2-6-8-6z"/></svg>';
+        };
+    }
+
+    if (userName) {
+        userName.textContent = user.name || user.email;
+    }
+}
+
+/**
+ * Logout user
+ */
+async function logout() {
+    try {
+        await fetch('/api/v1/auth/logout', {
+            method: 'POST',
+            credentials: 'include'
+        });
+
+        currentUser = null;
+        showLoginButtons();
+
+        // Optionally reload to clear any user-specific state
+        // window.location.reload();
+    } catch (error) {
+        console.error('Logout failed:', error);
     }
 }

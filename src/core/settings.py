@@ -86,6 +86,23 @@ class LoggingConfig(BaseModel):
     file: Optional[str] = None
 
 
+class AuthConfig(BaseModel):
+    """Authentication configuration."""
+    enabled: bool = False
+    jwt_secret: str = "change-this-secret-in-production"
+    jwt_expire_minutes: int = 60 * 24 * 7  # 7 days
+
+    # OAuth providers
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    github_client_id: str = ""
+    github_client_secret: str = ""
+
+    # Redirect URLs
+    frontend_url: str = "http://localhost:9033"
+    callback_url: str = "http://localhost:9033/api/v1/auth/{provider}/callback"
+
+
 class Settings(BaseSettings):
     """Application settings."""
 
@@ -101,6 +118,7 @@ class Settings(BaseSettings):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    auth: AuthConfig = Field(default_factory=AuthConfig)
 
     # API Keys (loaded from Vault or environment)
     _api_keys: Optional[dict[str, str]] = None
@@ -141,6 +159,7 @@ class Settings(BaseSettings):
             "database": config_data.get("database", {}),
             "llm": config_data.get("llm", {}),
             "logging": config_data.get("logging", {}),
+            "auth": config_data.get("auth", {}),
         }
 
         # Resolve environment variables in vault token
@@ -156,6 +175,17 @@ class Settings(BaseSettings):
             if password.startswith("${") and password.endswith("}"):
                 env_var = password[2:-1]
                 settings_data["database"]["password"] = os.getenv(env_var, "")
+
+        # Resolve environment variables in auth config
+        if "auth" in settings_data:
+            auth_config = settings_data["auth"]
+            for key in ["google_client_id", "google_client_secret",
+                        "github_client_id", "github_client_secret", "jwt_secret"]:
+                if key in auth_config:
+                    value = auth_config[key]
+                    if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
+                        env_var = value[2:-1]
+                        auth_config[key] = os.getenv(env_var, "")
 
         return cls(**settings_data)
 

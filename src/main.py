@@ -9,11 +9,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 from src.core.settings import get_settings, Settings
 from src.core.database import init_database, close_database
+from src.core.user_repository import UserRepository
 from src.api.routes.chat import router as chat_router
 from src.api.routes.upload import router as upload_router
+from src.api.routes.auth import router as auth_router
 from src.utils.logger import setup_logger, logger
 
 
@@ -35,6 +38,11 @@ async def lifespan(app: FastAPI):
     try:
         await init_database()
         logger.info("Database connection pool initialized")
+
+        # Create users table if auth is enabled
+        if settings.auth.enabled:
+            await UserRepository.create_tables()
+            logger.info("Auth tables initialized")
     except Exception as e:
         logger.warning(f"Database initialization failed (will use config fallback): {e}")
 
@@ -68,6 +76,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         debug=settings.debug
     )
 
+    # Session middleware (required for OAuth state)
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=settings.auth.jwt_secret,
+        max_age=3600  # 1 hour session
+    )
+
     # CORS middleware
     app.add_middleware(
         CORSMiddleware,
@@ -87,6 +102,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Routes
     app.include_router(chat_router)
     app.include_router(upload_router)
+    app.include_router(auth_router)
 
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request):
