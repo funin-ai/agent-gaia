@@ -24,6 +24,7 @@ const fileInput = document.getElementById('file-input');
 const attachmentsPreview = document.getElementById('attachments-preview');
 const welcomeScreen = document.getElementById('welcome-screen');
 const newChatBtn = document.getElementById('new-chat-btn');
+const exportBtn = document.getElementById('export-btn');
 const chatMain = document.querySelector('.chat-main');
 const usageInfo = document.getElementById('usage-info');
 
@@ -82,6 +83,9 @@ function initEventListeners() {
 
     // New chat button
     newChatBtn.addEventListener('click', clearChat);
+
+    // Export button
+    exportBtn.addEventListener('click', exportConversation);
 
     // Drag and drop on main area
     const chatMain = document.querySelector('.chat-main');
@@ -308,6 +312,10 @@ function clearChat() {
     const messages = chatOutput.querySelectorAll('.message');
     messages.forEach(msg => msg.remove());
 
+    // Clear search results
+    const searchResults = chatOutput.querySelectorAll('.search-results');
+    searchResults.forEach(r => r.remove());
+
     // Show welcome screen and restore centered layout
     if (welcomeScreen) {
         welcomeScreen.style.display = 'flex';
@@ -329,6 +337,51 @@ function clearChat() {
     const ws = connections[currentProvider];
     if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'clear_history' }));
+    }
+}
+
+async function exportConversation() {
+    // Check if there are any messages
+    const messages = chatOutput.querySelectorAll('.message');
+    if (messages.length === 0) {
+        alert('No conversation to export.');
+        return;
+    }
+
+    try {
+        // Fetch export from server
+        const response = await fetch('/api/v1/export?format=markdown');
+
+        if (!response.ok) {
+            const error = await response.json();
+            alert(error.error || 'Export failed');
+            return;
+        }
+
+        // Get filename from Content-Disposition header
+        const disposition = response.headers.get('Content-Disposition');
+        let filename = 'conversation.md';
+        if (disposition) {
+            const match = disposition.match(/filename="(.+?)"/);
+            if (match) filename = match[1];
+        }
+
+        // Download the file
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        updateStatus('Exported!', 'connected');
+        setTimeout(() => updateStatus(), 2000);
+    } catch (error) {
+        console.error('Export failed:', error);
+        alert('Export failed: ' + error.message);
     }
 }
 

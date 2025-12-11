@@ -1,9 +1,11 @@
 """WebSocket chat API for multi-LLM streaming."""
 
 import asyncio
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi.responses import Response
 from starlette.websockets import WebSocketState
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
@@ -479,3 +481,65 @@ async def health_check():
         "status": "healthy",
         "connected_providers": manager.get_connected_providers(),
     }
+
+
+@router.get("/export")
+async def export_conversation(format: str = "markdown"):
+    """Export conversation history as Markdown or text.
+
+    Args:
+        format: Export format (markdown, text)
+
+    Returns:
+        Conversation as downloadable file
+    """
+    if not conversation_history:
+        return {"error": "No conversation to export", "success": False}
+
+    # Build markdown content
+    lines = []
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if format == "markdown":
+        lines.append("# AgentGaia Conversation Export")
+        lines.append(f"\n**Exported:** {timestamp}\n")
+        lines.append("---\n")
+
+        for msg in conversation_history:
+            if isinstance(msg, HumanMessage):
+                lines.append("## User\n")
+                lines.append(f"{msg.content}\n")
+            elif isinstance(msg, AIMessage):
+                lines.append("## Assistant\n")
+                lines.append(f"{msg.content}\n")
+            lines.append("")  # Empty line between messages
+
+        content = "\n".join(lines)
+        filename = f"conversation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+        media_type = "text/markdown"
+    else:
+        # Plain text format
+        lines.append(f"AgentGaia Conversation Export - {timestamp}")
+        lines.append("=" * 50)
+        lines.append("")
+
+        for msg in conversation_history:
+            if isinstance(msg, HumanMessage):
+                lines.append("[User]")
+                lines.append(msg.content)
+            elif isinstance(msg, AIMessage):
+                lines.append("[Assistant]")
+                lines.append(msg.content)
+            lines.append("-" * 30)
+
+        content = "\n".join(lines)
+        filename = f"conversation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        media_type = "text/plain"
+
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
