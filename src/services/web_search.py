@@ -58,7 +58,7 @@ class WebSearchResponse:
 SEARCH_INTENT_PATTERNS = [
     # Korean patterns
     r"웹\s*서칭|웹\s*검색",
-    r"검색\s*해\s*줘|검색\s*해줘",
+    r"검색\s*(?:좀\s*)?해\s*줘",
     r"찾아\s*줘|찾아줘",
     r"인터넷에서|온라인에서",
     r"최신\s*정보|최근\s*뉴스",
@@ -94,10 +94,14 @@ def detect_search_intent(message: str) -> tuple[bool, Optional[str]]:
     # Remove the search command part and get the actual query
     query = message
 
-    # Remove Korean search commands
+    # Remove Korean search commands (order matters - longer patterns first)
+    query = re.sub(r"웹\s*서칭\s*(?:하면\s*)?해\s*줘\.?\s*", "", query, flags=re.IGNORECASE)
     query = re.sub(r"웹\s*서칭\s*해\s*줘\.?\s*", "", query, flags=re.IGNORECASE)
-    query = re.sub(r"웹\s*검색\s*해\s*줘\.?\s*", "", query, flags=re.IGNORECASE)
-    query = re.sub(r"검색\s*해\s*줘\.?\s*", "", query, flags=re.IGNORECASE)
+    query = re.sub(r"웹\s*서칭\s+", "", query, flags=re.IGNORECASE)
+    query = re.sub(r"웹\s*검색\s*(?:하면\s*)?해\s*줘\.?\s*", "", query, flags=re.IGNORECASE)
+    query = re.sub(r"웹\s*검색\s+", "", query, flags=re.IGNORECASE)
+    query = re.sub(r"검색\s*좀\s*해\s*줘\.?\s*", "", query, flags=re.IGNORECASE)
+    query = re.sub(r"검색\s*(?:하면\s*)?해\s*줘\.?\s*", "", query, flags=re.IGNORECASE)
     query = re.sub(r"찾아\s*줘\.?\s*", "", query, flags=re.IGNORECASE)
     query = re.sub(r"인터넷에서\s*", "", query, flags=re.IGNORECASE)
     query = re.sub(r"온라인에서\s*", "", query, flags=re.IGNORECASE)
