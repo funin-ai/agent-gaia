@@ -507,12 +507,20 @@ async function initAuth() {
 
     if (googleBtn) {
         googleBtn.addEventListener('click', () => {
+            if (googleBtn.classList.contains('disabled')) {
+                alert('Google OAuth is not configured.\nPlease set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.');
+                return;
+            }
             window.location.href = '/api/v1/auth/google/login';
         });
     }
 
     if (githubBtn) {
         githubBtn.addEventListener('click', () => {
+            if (githubBtn.classList.contains('disabled')) {
+                alert('GitHub OAuth is not configured.\nPlease set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.');
+                return;
+            }
             window.location.href = '/api/v1/auth/github/login';
         });
     }
@@ -559,18 +567,21 @@ async function checkAvailableProviders() {
         const googleBtn = document.getElementById('google-login-btn');
         const githubBtn = document.getElementById('github-login-btn');
 
-        // Hide buttons for unconfigured providers
+        // Get available providers
         const availableProviders = data.providers.map(p => p.name);
 
+        // Mark unconfigured providers as disabled (but keep visible)
         if (googleBtn && !availableProviders.includes('google')) {
-            googleBtn.style.display = 'none';
+            googleBtn.classList.add('disabled');
+            googleBtn.title = 'Google OAuth not configured';
         }
 
         if (githubBtn && !availableProviders.includes('github')) {
-            githubBtn.style.display = 'none';
+            githubBtn.classList.add('disabled');
+            githubBtn.title = 'GitHub OAuth not configured';
         }
 
-        // If auth is disabled, hide the entire section
+        // If auth is disabled entirely, hide the section
         if (!data.enabled) {
             const userSection = document.getElementById('user-section');
             if (userSection) {
