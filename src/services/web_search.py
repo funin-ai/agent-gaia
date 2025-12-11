@@ -125,15 +125,38 @@ def detect_search_intent(message: str) -> tuple[bool, Optional[str]]:
 class WebSearchService:
     """Web search service using DuckDuckGo."""
 
-    def __init__(self, max_results: int = 5, region: str = "kr-kr"):
+    def __init__(self, max_results: int = 5, region: str = "wt-wt"):
         """Initialize web search service.
 
         Args:
             max_results: Maximum number of search results
-            region: Search region (kr-kr for Korean results)
+            region: Search region (wt-wt for worldwide, en-us for English)
         """
         self.max_results = max_results
         self.region = region
+
+    def _is_useful_result(self, url: str, title: str) -> bool:
+        """Filter out non-useful results (e.g., Chinese sites).
+
+        Args:
+            url: Result URL
+            title: Result title
+
+        Returns:
+            True if result seems useful
+        """
+        # Block known Chinese-only domains
+        blocked_domains = [
+            'zhihu.com', 'baidu.com', 'csdn.net', 'jianshu.com',
+            'cnblogs.com', 'oschina.net', 'segmentfault.com',
+            'bilibili.com', 'weibo.com', 'qq.com', '163.com',
+        ]
+
+        for domain in blocked_domains:
+            if domain in url:
+                return False
+
+        return True
 
     async def search(self, query: str) -> WebSearchResponse:
         """Perform web search.
@@ -148,21 +171,33 @@ class WebSearchService:
             logger.info(f"Performing web search: '{query}'")
 
             with DDGS() as ddgs:
+                # Fetch more results to account for filtering
                 raw_results = list(ddgs.text(
                     query,
                     region=self.region,
-                    max_results=self.max_results
+                    max_results=self.max_results * 3
                 ))
 
             results = []
             for r in raw_results:
+                url = r.get("href", r.get("link", ""))
+                title = r.get("title", "")
+
+                # Filter out non-useful results
+                if not self._is_useful_result(url, title):
+                    continue
+
                 results.append(SearchResult(
-                    title=r.get("title", ""),
-                    url=r.get("href", r.get("link", "")),
+                    title=title,
+                    url=url,
                     snippet=r.get("body", r.get("snippet", ""))
                 ))
 
-            logger.info(f"Web search completed: {len(results)} results")
+                # Stop once we have enough results
+                if len(results) >= self.max_results:
+                    break
+
+            logger.info(f"Web search completed: {len(results)} results (filtered)")
 
             return WebSearchResponse(
                 query=query,
