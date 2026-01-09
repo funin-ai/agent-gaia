@@ -23,6 +23,7 @@ from src.services.web_search import (
     get_web_search_service,
     detect_search_intent,
 )
+from src.core.conversation_repository import ConversationRepository
 
 
 def is_ws_connected(websocket: WebSocket) -> bool:
@@ -48,6 +49,9 @@ user_ratings: dict[int, dict[str, int]] = {}
 
 # Shared conversation history (all providers share the same context)
 conversation_history: list = []
+
+# Current conversation ID (shared across providers)
+current_conversation_id: Optional[str] = None
 
 # System prompt for all providers
 SYSTEM_PROMPT = (
@@ -170,7 +174,9 @@ async def websocket_chat(websocket: WebSocket, provider: str):
                 )
 
             elif data.get("type") == "clear_history":
+                global current_conversation_id
                 conversation_history.clear()
+                current_conversation_id = None
                 # Reset session usage statistics
                 token_counter.reset_session(session_id)
                 logger.info(f"Conversation history and session usage cleared: {session_id}")
@@ -181,6 +187,39 @@ async def websocket_chat(websocket: WebSocket, provider: str):
                         "session": token_counter.get_session(session_id).to_dict(),
                     }
                 )
+
+            elif data.get("type") == "load_conversation":
+                # Load existing conversation from DB
+                conv_id = data.get("conversation_id")
+                if conv_id:
+                    conv = await ConversationRepository.get_conversation(conv_id)
+                    if conv:
+                        conversation_history.clear()
+                        current_conversation_id = conv_id
+                        # Rebuild history from DB
+                        for msg in conv.messages:
+                            if msg.role == "user":
+                                conversation_history.append(HumanMessage(content=msg.content))
+                            elif msg.role == "assistant":
+                                conversation_history.append(AIMessage(content=msg.content))
+                        logger.info(f"Loaded conversation {conv_id} with {len(conv.messages)} messages")
+                        await safe_send(
+                            websocket, {
+                                "type": "conversation_loaded",
+                                "provider": provider,
+                                "conversation_id": conv_id,
+                                "title": conv.title,
+                                "message_count": len(conv.messages),
+                            }
+                        )
+                    else:
+                        await safe_send(
+                            websocket, {
+                                "type": "error",
+                                "provider": provider,
+                                "error": f"Conversation {conv_id} not found",
+                            }
+                        )
 
     except WebSocketDisconnect:
         manager.disconnect(provider)
@@ -268,6 +307,8 @@ async def process_chat(
         attachments: List of filenames to include as context
         session_id: Unique session identifier for usage tracking
     """
+    global current_conversation_id
+
     try:
         if not message.strip() and not attachments:
             await safe_send(
@@ -340,6 +381,30 @@ async def process_chat(
         # Trim history if too long
         if len(conversation_history) > MAX_HISTORY_MESSAGES:
             del conversation_history[:-MAX_HISTORY_MESSAGES]
+
+        # Create new conversation if none exists
+        if current_conversation_id is None:
+            title = await ConversationRepository.generate_title_from_content(message)
+            conv = await ConversationRepository.create_conversation(title=title)
+            if conv:
+                current_conversation_id = conv.id
+                logger.info(f"Created new conversation: {current_conversation_id}")
+                await safe_send(
+                    websocket, {
+                        "type": "conversation_created",
+                        "provider": provider,
+                        "conversation_id": current_conversation_id,
+                        "title": title,
+                    }
+                )
+
+        # Save user message to DB
+        if current_conversation_id:
+            await ConversationRepository.add_message(
+                conversation_id=current_conversation_id,
+                role="user",
+                content=text_for_history
+            )
 
         # Build messages for current request
         # Use multimodal content for current message if available (images)
@@ -424,6 +489,19 @@ async def process_chat(
                 messages=messages,
             )
 
+            # Save assistant message to DB with usage info
+            if current_conversation_id:
+                await ConversationRepository.add_message(
+                    conversation_id=current_conversation_id,
+                    role="assistant",
+                    content=full_response,
+                    provider=actual_provider,
+                    model=model_name,
+                    input_tokens=usage.input_tokens,
+                    output_tokens=usage.output_tokens,
+                    cost=usage.total_cost
+                )
+
             # Send usage statistics to client
             await safe_send(
                 websocket,
@@ -438,6 +516,7 @@ async def process_chat(
                         "cost": round(usage.total_cost, 6),
                     },
                     "session": token_counter.get_session(effective_session_id).to_dict(),
+                    "conversation_id": current_conversation_id,
                 },
             )
 
@@ -543,3 +622,109 @@ async def export_conversation(format: str = "markdown"):
             "Content-Disposition": f'attachment; filename="{filename}"'
         }
     )
+
+
+@router.get("/conversations")
+async def list_conversations(limit: int = 50, offset: int = 0):
+    """List all conversations.
+
+    Args:
+        limit: Maximum number of results
+        offset: Offset for pagination
+
+    Returns:
+        List of conversations
+    """
+    conversations = await ConversationRepository.list_conversations(
+        limit=limit, offset=offset
+    )
+    return {
+        "conversations": [
+            {
+                "id": c.id,
+                "title": c.title,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+                "updated_at": c.updated_at.isoformat() if c.updated_at else None,
+            }
+            for c in conversations
+        ],
+        "current_conversation_id": current_conversation_id,
+    }
+
+
+@router.get("/conversations/{conversation_id}")
+async def get_conversation(conversation_id: str):
+    """Get a conversation with all its messages.
+
+    Args:
+        conversation_id: Conversation ID
+
+    Returns:
+        Conversation with messages
+    """
+    conv = await ConversationRepository.get_conversation(conversation_id)
+    if not conv:
+        return {"error": "Conversation not found", "success": False}
+
+    return {
+        "id": conv.id,
+        "title": conv.title,
+        "created_at": conv.created_at.isoformat() if conv.created_at else None,
+        "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
+        "messages": [
+            {
+                "id": m.id,
+                "role": m.role,
+                "content": m.content,
+                "provider": m.provider,
+                "model": m.model,
+                "input_tokens": m.input_tokens,
+                "output_tokens": m.output_tokens,
+                "cost": float(m.cost) if m.cost else None,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+            }
+            for m in conv.messages
+        ],
+    }
+
+
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: str):
+    """Delete a conversation.
+
+    Args:
+        conversation_id: Conversation ID
+
+    Returns:
+        Success status
+    """
+    global current_conversation_id
+
+    success = await ConversationRepository.delete_conversation(conversation_id)
+    if not success:
+        return {"error": "Failed to delete conversation", "success": False}
+
+    # If deleting current conversation, clear history
+    if current_conversation_id == conversation_id:
+        conversation_history.clear()
+        current_conversation_id = None
+
+    return {"success": True, "message": f"Conversation {conversation_id} deleted"}
+
+
+@router.patch("/conversations/{conversation_id}")
+async def update_conversation(conversation_id: str, title: str):
+    """Update conversation title.
+
+    Args:
+        conversation_id: Conversation ID
+        title: New title
+
+    Returns:
+        Success status
+    """
+    success = await ConversationRepository.update_title(conversation_id, title)
+    if not success:
+        return {"error": "Failed to update title", "success": False}
+
+    return {"success": True, "title": title}

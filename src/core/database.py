@@ -74,7 +74,6 @@ _db_pool: Optional[DatabasePool] = None
 
 def get_db_pool() -> DatabasePool:
     """Get or create global database pool.
-
     Returns:
         DatabasePool instance
     """
@@ -85,7 +84,9 @@ def get_db_pool() -> DatabasePool:
 
 
 async def init_database():
-    """Initialize database connection pool."""
+    """
+    Initialize database connection pool.
+    """
     try:
         pool = get_db_pool()
         await asyncio.wait_for(pool.get_pool(), timeout=5.0)
@@ -96,6 +97,8 @@ async def init_database():
 
 
 async def close_database():
-    """Close database connection pool."""
+    """
+    Close database connection pool.
+    """
     pool = get_db_pool()
     await pool.close()

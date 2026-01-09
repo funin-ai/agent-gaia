@@ -21,7 +21,6 @@ class ModelCostInfo:
     @property
     def input_cost_per_1k(self) -> float:
         """Get input cost per 1K tokens (convert from MTok).
-
         Returns:
             Cost per 1K tokens in USD
         """
@@ -31,7 +30,6 @@ class ModelCostInfo:
     @property
     def output_cost_per_1k(self) -> float:
         """Get output cost per 1K tokens (convert from MTok).
-
         Returns:
             Cost per 1K tokens in USD
         """

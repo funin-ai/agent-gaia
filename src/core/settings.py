@@ -130,10 +130,8 @@ class Settings(BaseSettings):
     @classmethod
     def from_yaml(cls, env: str = "local") -> "Settings":
         """Load settings from YAML config file.
-
         Args:
             env: Environment name (local, dev, prod)
-
         Returns:
             Settings instance
         """
@@ -191,7 +189,6 @@ class Settings(BaseSettings):
 
     def load_api_keys(self) -> dict[str, str]:
         """Load API keys from Vault or environment variables.
-
         Returns:
             Dictionary of provider -> API key
         """
@@ -230,7 +227,6 @@ class Settings(BaseSettings):
 
     def _load_from_env(self) -> dict[str, str]:
         """Load API keys from environment variables.
-
         Returns:
             Dictionary of provider -> API key
         """
@@ -244,10 +240,8 @@ class Settings(BaseSettings):
 
     def get_api_key(self, provider: str) -> Optional[str]:
         """Get API key for a specific provider.
-
         Args:
             provider: Provider name (anthropic, openai, google)
-
         Returns:
             API key or None
         """
@@ -258,10 +252,8 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings(env: Optional[str] = None) -> Settings:
     """Get cached settings instance.
-
     Args:
         env: Environment name (defaults to APP_ENV or 'local')
-
     Returns:
         Settings instance
     """

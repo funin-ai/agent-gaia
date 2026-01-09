@@ -60,11 +60,9 @@ def get_secret_key() -> str:
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create JWT access token.
-
     Args:
         data: Payload data to encode
         expires_delta: Token expiration time
-
     Returns:
         Encoded JWT token string
     """
@@ -83,10 +81,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 def decode_access_token(token: str) -> Optional[TokenData]:
     """Decode and validate JWT token.
-
     Args:
         token: JWT token string
-
     Returns:
         TokenData if valid, None otherwise
     """
@@ -113,7 +109,6 @@ async def get_current_user_optional(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> Optional[TokenData]:
     """Get current user from JWT token (optional - returns None if not authenticated).
-
     Use this for endpoints that work both with and without authentication.
     """
     if credentials is None:
@@ -127,7 +122,6 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> TokenData:
     """Get current user from JWT token (required - raises 401 if not authenticated).
-
     Use this for protected endpoints that require authentication.
     """
     credentials_exception = HTTPException(

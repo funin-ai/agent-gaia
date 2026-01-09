@@ -17,6 +17,7 @@ router = APIRouter(prefix="/api/v1", tags=["upload"])
 
 class FileUploadResponse(BaseModel):
     """Response model for file upload."""
+
     filename: str
     category: str
     mime_type: str
@@ -31,6 +32,7 @@ class FileUploadResponse(BaseModel):
 
 class UploadedFileContext(BaseModel):
     """File context for chat."""
+
     filename: str
     category: str
     # Text content for non-image files
@@ -48,10 +50,8 @@ uploaded_files: dict[str, ProcessedFile] = {}
 @router.post("/upload", response_model=FileUploadResponse)
 async def upload_file(file: UploadFile = File(...)):
     """Upload and process a single file.
-
     Args:
         file: Uploaded file
-
     Returns:
         Processing result
     """
@@ -95,10 +95,8 @@ async def upload_file(file: UploadFile = File(...)):
 @router.post("/upload/multiple", response_model=list[FileUploadResponse])
 async def upload_multiple_files(files: list[UploadFile] = File(...)):
     """Upload and process multiple files.
-
     Args:
         files: List of uploaded files
-
     Returns:
         List of processing results
     """
@@ -134,7 +132,9 @@ async def upload_multiple_files(files: list[UploadFile] = File(...)):
                     size=result.size,
                     success=result.is_success,
                     error=result.error,
-                    text_length=len(result.text_content) if result.text_content else None,
+                    text_length=(
+                        len(result.text_content) if result.text_content else None
+                    ),
                     has_image=result.has_image,
                 )
             )
@@ -158,10 +158,8 @@ async def upload_multiple_files(files: list[UploadFile] = File(...)):
 @router.get("/upload/{filename}", response_model=UploadedFileContext)
 async def get_file_context(filename: str):
     """Get uploaded file context for chat.
-
     Args:
         filename: Uploaded filename
-
     Returns:
         File context with text or image data
     """
@@ -182,10 +180,8 @@ async def get_file_context(filename: str):
 @router.delete("/upload/{filename}")
 async def delete_uploaded_file(filename: str):
     """Delete an uploaded file.
-
     Args:
         filename: Filename to delete
-
     Returns:
         Success message
     """
@@ -201,7 +197,6 @@ async def delete_uploaded_file(filename: str):
 @router.get("/upload")
 async def list_uploaded_files():
     """List all uploaded files.
-
     Returns:
         List of uploaded file info
     """
@@ -222,7 +217,6 @@ async def list_uploaded_files():
 @router.delete("/upload")
 async def clear_uploaded_files():
     """Clear all uploaded files.
-
     Returns:
         Success message
     """

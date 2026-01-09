@@ -207,12 +207,10 @@ class LLMRouter:
         **kwargs
     ) -> AsyncIterator[str]:
         """Stream LLM response with retry logic.
-
         Args:
             provider: Provider name
             messages: List of messages
             **kwargs: Additional arguments for get_llm
-
         Yields:
             Response chunks
         """
@@ -235,7 +233,6 @@ _router: Optional[LLMRouter] = None
 
 def get_llm_router() -> LLMRouter:
     """Get or create global LLM router instance.
-
     Returns:
         LLMRouter instance
     """

@@ -44,13 +44,11 @@ def create_llm_retry(
     multiplier: int = 1
 ):
     """Create a retry decorator for LLM API calls.
-
     Args:
         max_attempts: Maximum number of retry attempts
         min_wait: Minimum wait time in seconds
         max_wait: Maximum wait time in seconds
         multiplier: Exponential backoff multiplier
-
     Returns:
         Retry decorator
     """
