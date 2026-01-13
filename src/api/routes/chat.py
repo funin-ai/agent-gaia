@@ -23,6 +23,7 @@ from src.services.web_search import (
     get_web_search_service,
     detect_search_intent,
 )
+from src.services.rag_service import get_rag_service
 from src.core.conversation_repository import ConversationRepository
 
 
@@ -363,12 +364,63 @@ async def process_chat(
                 search_context = search_response.to_context()
                 logger.info(f"Web search context added: {len(search_context)} chars")
 
+        # RAG search for relevant documents
+        rag_context = ""
+        settings = get_settings()
+        if settings.rag.enabled:
+            try:
+                # Notify client that RAG search is in progress
+                await safe_send(
+                    websocket,
+                    {
+                        "type": "rag_searching",
+                        "provider": provider,
+                        "collection": settings.rag.collection_name,
+                    }
+                )
+
+                # Perform RAG search
+                rag_service = get_rag_service()
+                rag_response = await rag_service.search(message)
+
+                if rag_response.success and rag_response.results:
+                    # Send RAG results to client
+                    await safe_send(
+                        websocket,
+                        {
+                            "type": "rag_results",
+                            "provider": provider,
+                            "collection": rag_response.collection,
+                            "results_count": len(rag_response.results),
+                            "processing_time_ms": rag_response.processing_time_ms,
+                        }
+                    )
+
+                    # Build RAG context for LLM
+                    rag_context = rag_service.format_context(rag_response.results)
+                    logger.info(f"RAG context added: {len(rag_context)} chars, {len(rag_response.results)} docs")
+                else:
+                    if rag_response.error:
+                        logger.warning(f"RAG search failed: {rag_response.error}")
+                    else:
+                        logger.info("RAG search returned no results")
+
+            except Exception as e:
+                logger.error(f"RAG search error: {e}")
+                # Continue without RAG context on error
+
         # Build message content with file attachments
         text_for_history, multimodal_content = _build_message_content(
             message, attachments or [], provider
         )
 
-        # Prepend search context if available
+        # Prepend RAG context if available (internal knowledge)
+        if rag_context:
+            text_for_history = f"{rag_context}\n\n---\n\n{text_for_history}"
+            if multimodal_content:
+                multimodal_content[0]["text"] = text_for_history
+
+        # Prepend web search context if available (external knowledge)
         if search_context:
             text_for_history = f"{search_context}\n\n---\n\n사용자 질문: {text_for_history}"
             if multimodal_content:

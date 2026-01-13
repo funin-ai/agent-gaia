@@ -64,6 +64,15 @@ llm:
   default_temperature: 0.2
   default_max_tokens: 8192
 
+rag:
+  enabled: true
+  collection_name: "homepage_collection"
+  search_limit: 5
+  score_threshold: 0.5
+  # External services (direct access on internal network)
+  embedding_url: "http://192.168.100.12:8000"
+  search_url: "http://192.168.100.12:8002"
+
 logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

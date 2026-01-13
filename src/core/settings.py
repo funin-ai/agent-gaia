@@ -103,6 +103,16 @@ class AuthConfig(BaseModel):
     callback_url: str = "http://localhost:9033/api/v1/auth/{provider}/callback"
 
 
+class RAGConfig(BaseModel):
+    """RAG (Retrieval-Augmented Generation) configuration."""
+    enabled: bool = True
+    collection_name: str = "homepage_collection"
+    search_limit: int = 5
+    score_threshold: float = 0.5
+    embedding_url: str = "http://localhost:8000"
+    search_url: str = "http://localhost:8002"
+
+
 class Settings(BaseSettings):
     """Application settings."""
 
@@ -119,6 +129,7 @@ class Settings(BaseSettings):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     auth: AuthConfig = Field(default_factory=AuthConfig)
+    rag: RAGConfig = Field(default_factory=RAGConfig)
 
     # API Keys (loaded from Vault or environment)
     _api_keys: Optional[dict[str, str]] = None
@@ -158,6 +169,7 @@ class Settings(BaseSettings):
             "llm": config_data.get("llm", {}),
             "logging": config_data.get("logging", {}),
             "auth": config_data.get("auth", {}),
+            "rag": config_data.get("rag", {}),
         }
 
         # Resolve environment variables in vault token
